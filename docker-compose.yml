@@ -1,0 +1,100 @@
+services:
+    litestream:
+        image: litestream/litestream
+        volumes:
+            - ./litestream.yml:/etc/litestream.yml
+            - ~/volumes/fam/sqlite:/sqlite
+        environment:
+            - LITESTREAM_ACCESS_KEY_ID=3c769e218bed0a411768cf4753559bf9
+            - LITESTREAM_SECRET_ACCESS_KEY=c01861fffba83073ca31eb7a5fb24c90750db3d8f4cf1946920d7d33195ac0b7
+        healthcheck:
+            test: replicate
+            timeout: 1m
+            retries: 3
+        command:
+            - replicate
+
+    nats-server:
+        image: nats:latest
+        command: -js -m 8222 -sd nats
+        volumes:
+            - ~/volumes/maymun/nats:/nats
+        networks:
+            - internal
+    api:
+        build:
+            context: ./kdsx-api
+        restart: always
+        networks:
+            - app
+            - internal
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.fam-api.entrypoints=web, websecure
+            - traefik.http.routers.fam-api.rule=Host(`fam.api.kdsx.uz`) || Host(`www.fam.api.kdsx.uz`)
+            - traefik.http.services.fam-api.loadbalancer.server.port=3000
+            - traefik.http.middlewares.wwwredirect.redirectregex.regex=^https://www\.(.*)
+            - traefik.http.middlewares.wwwredirect.redirectregex.replacement=https://$${1}
+            - traefik.http.routers.fam-api.middlewares=wwwredirect
+        environment:
+            - ADDR=:3000
+            - DOMAIN=https://fam.api.kdsx.uz
+            - NATS_URL=nats://nats-server:4222
+            - DSN=/sqlite/db.sqlite
+        volumes:
+            - ~/volumes/fam/static:/static
+            - ~/volumes/fam/sqlite:/sqlite
+    pos:
+        build:
+            context: ./kdsx-pos-v2
+            args:
+                VITE_API_URL: https://fam.api.kdsx.uz
+        restart: always
+        networks:
+            - app
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.fam-pos.entrypoints=web, websecure
+            - traefik.http.routers.fam-pos.rule=Host(`fam.pos.kdsx.uz`) || Host(`www.fam.pos.kdsx.uz`)
+            - traefik.http.services.fam-pos.loadbalancer.server.port=80
+            - traefik.http.middlewares.wwwredirect.redirectregex.regex=^https://www\.(.*)
+            - traefik.http.middlewares.wwwredirect.redirectregex.replacement=https://$${1}
+            - traefik.http.routers.fam-pos.middlewares=wwwredirect
+    kitchen:
+        build:
+            context: ./kdsx-kitchen-v2
+            args:
+                VITE_API_URL: https://fam.api.kdsx.uz
+        restart: always
+        networks:
+            - app
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.fam-kitchen.entrypoints=web, websecure
+            - traefik.http.routers.fam-kitchen.rule=Host(`fam.kitchen.kdsx.uz`) || Host(`www.fam.kitchen.kdsx.uz`)
+            - traefik.http.services.fam-kitchen.loadbalancer.server.port=80
+            - traefik.http.middlewares.wwwredirect.redirectregex.regex=^https://www\.(.*)
+            - traefik.http.middlewares.wwwredirect.redirectregex.replacement=https://$${1}
+            - traefik.http.routers.fam-kitchen.middlewares=wwwredirect
+    dash:
+        build:
+            context: ./kdsx-dash-v2
+            args:
+                VITE_API_URL: https://fam.api.kdsx.uz
+        networks:
+            - app
+        restart: always
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.fam-dash.entrypoints=web, websecure
+            - traefik.http.routers.fam-dash.rule=Host(`fam.dash.kdsx.uz`) || Host(`www.fam.dash.kdsx.uz`)
+            - traefik.http.services.fam-dash.loadbalancer.server.port=80
+            - traefik.http.middlewares.wwwredirect.redirectregex.regex=^https://www\.(.*)
+            - traefik.http.middlewares.wwwredirect.redirectregex.replacement=https://$${1}
+            - traefik.http.routers.fam-dash.middlewares=wwwredirect
+networks:
+    app:
+        name: app
+        external: true
+    internal:
+        name: internal
