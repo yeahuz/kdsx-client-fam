@@ -20,14 +20,14 @@ services:
         volumes:
             - ~/volumes/maymun/nats:/nats
         networks:
-            - internal
+            - fam-internal
     api:
         build:
             context: ./kdsx-api
         restart: always
         networks:
             - app
-            - internal
+            - fam-internal
         labels:
             - traefik.enable=true
             - traefik.http.routers.fam-api.entrypoints=web, websecure
@@ -96,5 +96,5 @@ networks:
     app:
         name: app
         external: true
-    internal:
-        name: internal
+    fam-internal:
+        name: fam-internal
