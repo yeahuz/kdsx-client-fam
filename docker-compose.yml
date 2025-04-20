@@ -18,16 +18,16 @@ services:
         image: nats:latest
         command: -js -m 8222 -sd nats
         volumes:
-            - ~/volumes/maymun/nats:/nats
+            - ~/volumes/fam/nats:/nats
         networks:
-            - fam-internal
+            - internal
     api:
         build:
             context: ./kdsx-api
         restart: always
         networks:
             - app
-            - fam-internal
+            - internal
         labels:
             - traefik.enable=true
             - traefik.http.routers.fam-api.entrypoints=web, websecure
@@ -96,5 +96,5 @@ networks:
     app:
         name: app
         external: true
-    fam-internal:
-        name: fam-internal
+    internal:
+        name: internal
